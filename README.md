@@ -109,8 +109,27 @@ persistent database.
 
 ## External API
 
-Product lookups use the OpenFoodFacts API. Network access is required
-for real lookups; automated tests mock the external API.
+Product lookups use the OpenFoodFacts API. Network access is required for real lookups; automated tests mock the external API.
+
+Products can also be imported from OpenFoodFacts into the inventory using the import endpoint. The endpoint validates the product information and rejects duplicate products or invalid input.
+
+### Import a product
+
+Send a POST request to `/inventory/import` with either a barcode or a product name.
+
+Example using a barcode:
+
+```bash
+curl -X POST "http://127.0.0.1:5000/inventory/import?barcode=3017620422003"
+```
+
+Example using a product name:
+
+```bash
+curl -X POST "http://127.0.0.1:5000/inventory/import?name=Nutella"
+```
+
+A successful import adds the product to the in-memory inventory and returns a response with HTTP status `201 Created`. The API may return an error if the product cannot be found, the external service is unavailable, or the product already exists.
 
 ## License
 
