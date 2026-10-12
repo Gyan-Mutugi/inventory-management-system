@@ -128,3 +128,87 @@ def test_external_api_failure(mock_get, client):
 
     assert response.status_code == 502
     assert "error" in response.json
+
+@patch("app.requests.get")
+def test_import_external_product(mock_get, client):
+    mock_response = Mock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": 1,
+        "product": {
+            "code": "987654321",
+            "product_name": "Almond Milk",
+            "brands": "Test Brand",
+            "ingredients_text": "Water, almonds"
+        }
+    }
+    mock_get.return_value = mock_response
+
+    response = client.post(
+        "/inventory/import?barcode=987654321",
+        json={"quantity": 5, "price": 150}
+    )
+
+    assert response.status_code == 201
+    assert response.json["product_name"] == "Almond Milk"
+    assert response.json["quantity"] == 5
+    assert response.json["price"] == 150.0
+    assert any(
+        item["barcode"] == "987654321"
+        for item in inventory
+    )
+
+
+@patch("app.requests.get")
+def test_import_duplicate_product(mock_get, client):
+    mock_response = Mock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": 1,
+        "product": {
+            "code": "123456789",
+            "product_name": "Test Milk",
+            "brands": "Test Brand",
+            "ingredients_text": "Milk"
+        }
+    }
+    mock_get.return_value = mock_response
+
+    response = client.post(
+        "/inventory/import?barcode=123456789",
+        json={"quantity": 5, "price": 150}
+    )
+
+    assert response.status_code == 409
+    assert "error" in response.json
+
+
+@patch("app.requests.get")
+def test_import_rejects_invalid_quantity(mock_get, client):
+    mock_response = Mock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = {
+        "status": 1,
+        "product": {
+            "code": "987654321",
+            "product_name": "Almond Milk",
+            "brands": "Test Brand",
+            "ingredients_text": "Water, almonds"
+        }
+    }
+    mock_get.return_value = mock_response
+
+    response = client.post(
+        "/inventory/import?barcode=987654321",
+        json={"quantity": -1, "price": 150}
+    )
+
+    assert response.status_code == 400
+    assert "error" in response.json
+
+
+def test_import_requires_exactly_one_query(client):
+    response = client.post("/inventory/import")
+
+    assert response.status_code == 400
+    assert "error" in response.json
